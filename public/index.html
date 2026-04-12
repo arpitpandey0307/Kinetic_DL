@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KINETIC_DL // ALL-IN-ONE</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed-variant": "#005e64",
+                    "error-container": "#b92902",
+                    "secondary-dim": "#e90036",
+                    "error-dim": "#d53d18",
+                    "surface-container-low": "#131313",
+                    "surface-dim": "#0e0e0e",
+                    "on-secondary": "#49000a",
+                    "tertiary-container": "#00eefc",
+                    "error": "#ff7351",
+                    "primary-fixed": "#2ff801",
+                    "on-primary-fixed-variant": "#0d6200",
+                    "surface-tint": "#8eff71",
+                    "inverse-on-surface": "#565554",
+                    "background": "#0e0e0e",
+                    "on-error": "#450900",
+                    "on-surface-variant": "#adaaaa",
+                    "tertiary-fixed-dim": "#00deec",
+                    "secondary-fixed": "#ffc3c1",
+                    "on-tertiary-container": "#005359",
+                    "surface-container-lowest": "#000000",
+                    "surface": "#0e0e0e",
+                    "tertiary-dim": "#00deec",
+                    "inverse-surface": "#fcf8f8",
+                    "surface-variant": "#262626",
+                    "on-secondary-fixed-variant": "#a50023",
+                    "on-secondary-fixed": "#6f0014",
+                    "tertiary-fixed": "#00eefc",
+                    "on-tertiary-fixed": "#003f43",
+                    "surface-container": "#1a1919",
+                    "primary": "#8eff71",
+                    "surface-container-high": "#201f1f",
+                    "on-primary-fixed": "#064200",
+                    "secondary-container": "#bf002a",
+                    "outline": "#777575",
+                    "surface-container-highest": "#262626",
+                    "tertiary": "#8ff5ff",
+                    "surface-bright": "#2c2c2c",
+                    "primary-fixed-dim": "#2be800",
+                    "on-error-container": "#ffd2c8",
+                    "on-tertiary": "#005d63",
+                    "primary-dim": "#2be800",
+                    "secondary": "#ff7073",
+                    "primary-container": "#2ff801",
+                    "on-secondary-container": "#fff6f5",
+                    "on-primary": "#0d6100",
+                    "secondary-fixed-dim": "#ffafae",
+                    "on-surface": "#ffffff",
+                    "on-background": "#ffffff",
+                    "outline-variant": "#494847",
+                    "on-primary-container": "#0b5800",
+                    "inverse-primary": "#106f00"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0px",
+                    "lg": "0px",
+                    "xl": "0px",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Space Grotesk"],
+                    "body": ["Inter"],
+                    "label": ["Space Grotesk"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #0e0e0e;
+            background-image: radial-gradient(circle at 2px 2px, rgba(142, 255, 113, 0.05) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+        .grain-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.05;
+        }
+        .text-glow {
+            text-shadow: 0 0 15px rgba(142, 255, 113, 0.5);
+        }
+        .primary-gradient-btn {
+            background: linear-gradient(135deg, #8eff71 0%, #2ff801 100%);
+            box-shadow: 0 0 20px rgba(47, 248, 1, 0.3);
+        }
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+            display: flex;
+            width: max-content;
+            animation: marquee 30s linear infinite;
+        }
+        .marquee-container {
+            mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+        }
+    </style>
+</head>
+<body class="font-body text-on-surface selection:bg-primary selection:text-on-primary">
+<div class="grain-overlay"></div>
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full h-16 rounded-none bg-black/40 backdrop-blur-md border-b border-lime-400/15 shadow-[0_0_20px_rgba(142,255,113,0.15)] flex justify-between items-center px-6 w-full z-50">
+<div class="flex items-center gap-8">
+<span class="text-xl font-black text-lime-400 tracking-widest font-['Space_Grotesk'] uppercase">KINETIC_DL</span>
+<div class="hidden md:flex gap-6 items-center font-['Space_Grotesk'] tracking-tighter uppercase text-sm">
+<a class="text-lime-400 font-bold border-b-2 border-lime-400 pb-1" href="/">HOME</a>
+<a class="text-neutral-500 hover:text-lime-200 transition-colors" href="/dashboard.html">TERMINAL</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-all duration-200 ease-out active:scale-95">sensors</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-all duration-200 ease-out active:scale-95">settings</button>
+</div>
+</nav>
+<main class="relative pt-16 min-h-screen flex flex-col overflow-hidden">
+<!-- Hero Section -->
+<section class="relative flex-grow flex flex-col items-center justify-center px-6 py-24 text-center z-10">
+<div class="absolute inset-0 z-0 opacity-20 pointer-events-none">
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/20 rounded-full blur-[120px]"></div>
+</div>
+<!-- Status Indicator -->
+<div class="flex items-center gap-3 mb-8 px-4 py-1.5 bg-surface-container-low border border-primary/10">
+<div class="relative w-2 h-2">
+<div class="absolute inset-0 bg-primary rounded-full"></div>
+<div class="absolute inset-0 bg-primary rounded-full animate-ping opacity-75"></div>
+</div>
+<span class="font-label text-[10px] tracking-[0.3em] text-primary uppercase">SYSTEMS_ACTIVE : SYNC_READY</span>
+</div>
+<!-- Main Title -->
+<div class="relative mb-6">
+<h1 class="font-headline font-black text-5xl md:text-7xl lg:text-8xl leading-tight tracking-tighter uppercase italic select-none">
+                    ALL_IN_ONE<br/>
+<span class="text-primary text-glow">DOWNLOADER</span>
+</h1>
+<div class="absolute -top-4 -right-8 font-label text-[10px] text-secondary tracking-widest animate-pulse">
+                    [REV_4.02_STABLE]
+                </div>
+</div>
+<!-- Social Marquee -->
+<div class="w-full max-w-4xl overflow-hidden marquee-container mb-12 py-2 border-y border-lime-400/10">
+<div class="animate-marquee whitespace-nowrap flex items-center gap-16 py-2">
+<!-- Group 1 -->
+<div class="flex items-center gap-16">
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">YouTube</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">Instagram</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">Pinterest</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">Reddit</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">Twitter (X)</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">Terabox</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">Facebook</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">TikTok</span>
+</div>
+<!-- Duplicated Group for Loop -->
+<div class="flex items-center gap-16">
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">YouTube</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">Instagram</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">Pinterest</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">Reddit</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">Twitter (X)</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">Terabox</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">Facebook</span>
+<span class="text-primary/60 font-black tracking-widest uppercase text-xs italic">TikTok</span>
+</div>
+</div>
+</div>
+<!-- Central Call to Action -->
+<div class="flex flex-col items-center gap-8 max-w-2xl">
+<p class="text-on-surface-variant font-body text-sm md:text-base leading-relaxed tracking-wide max-w-lg">
+                    Decentralized extraction engine. Intercept and stabilize data streams across 500+ global network protocols. Zero loss, infinite velocity.
+                </p>
+<div class="group relative">
+<div class="absolute -inset-0.5 bg-primary opacity-30 blur group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+<a href="/dashboard.html" class="relative px-12 py-5 primary-gradient-btn text-on-primary font-headline font-black text-2xl tracking-[0.2em] transition-transform active:scale-95 flex items-center gap-4">
+                        ENTER_SYSTEM
+                        <span class="material-symbols-outlined font-bold">arrow_forward</span>
+</a>
+</div>
+</div>
+</section>
+<!-- Feature Modules (Asymmetric Bento) -->
+<section class="grid grid-cols-1 md:grid-cols-12 gap-1 px-1 bg-lime-400/10 border-y border-lime-400/10">
+<div class="md:col-span-4 bg-surface p-12 flex flex-col justify-between border-r border-lime-400/10 min-h-[400px]">
+<div class="space-y-4">
+<span class="material-symbols-outlined text-4xl text-primary" style="font-variation-settings: 'FILL' 1;">speed</span>
+<h3 class="font-headline text-3xl font-bold tracking-tight uppercase">VELOCITY_MAX</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed">Multi-threaded fragment extraction engine designed to saturate local bandwidth. Bypassing standard ISP throttling protocols via automated path optimization.</p>
+</div>
+<div class="pt-8 border-t border-outline-variant/20">
+<span class="font-label text-[10px] tracking-widest text-primary">CAPACITY: 10GBPS_LIMIT</span>
+</div>
+</div>
+<div class="md:col-span-5 bg-surface-container-low p-12 flex flex-col justify-between border-r border-lime-400/10">
+<div class="space-y-4">
+<span class="material-symbols-outlined text-4xl text-secondary" style="font-variation-settings: 'FILL' 1;">security</span>
+<h3 class="font-headline text-3xl font-bold tracking-tight uppercase">VAULT_ENCRYPTION</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed">Every bit of traffic is layered through AES-256 military-grade tunneling. Your digital footprint is scrambled and discarded immediately upon completion.</p>
+</div>
+<div class="relative h-24 mt-8 bg-surface-container-high overflow-hidden group">
+<img class="w-full h-full object-cover opacity-30 grayscale group-hover:grayscale-0 transition-all duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1zPSG8VCi01g9d1K76cwYGmm9laUXTVaSqDDL_B9wsd9b1LMOZhfEh2sLtdAgAKNCTXFpTfd90r9UsePHLo8mqjgFrjLo9f0xlkRAtZjHBhIF3ErKIo_ePmWOPdSyFOl4jRqu7XkKZUTUm-2lR1uJyiYqzazZAZTnUjJ1Zri9qOQ2QtbOLLnpWKE9xdpgzPja2kCjgQjn4iWS5SoWlMwYSicIyJJzV5KkLYSGsOy2rK98HXvCEZyBxxdvboSCp08nTWtWAKOaZw"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low to-transparent"></div>
+</div>
+</div>
+<div class="md:col-span-3 bg-surface p-12 flex flex-col gap-6">
+<div class="flex items-center justify-between">
+<span class="font-label text-[10px] text-on-surface-variant tracking-widest">ACTIVE_NODES</span>
+<span class="text-primary font-bold">14,802</span>
+</div>
+<div class="flex-grow flex flex-col gap-2">
+<div class="h-1 bg-surface-container-highest w-full"><div class="h-full bg-primary w-[85%] shadow-[0_0_8px_#8eff71]"></div></div>
+<div class="h-1 bg-surface-container-highest w-full"><div class="h-full bg-primary w-[40%] shadow-[0_0_8px_#8eff71]"></div></div>
+<div class="h-1 bg-surface-container-highest w-full"><div class="h-full bg-primary w-[65%] shadow-[0_0_8px_#8eff71]"></div></div>
+<div class="h-1 bg-surface-container-highest w-full"><div class="h-full bg-secondary w-[92%] shadow-[0_0_8px_#ff7073]"></div></div>
+<div class="h-1 bg-surface-container-highest w-full"><div class="h-full bg-primary w-[20%] shadow-[0_0_8px_#8eff71]"></div></div>
+</div>
+<a href="/dashboard.html" class="w-full border border-outline-variant/50 py-3 font-label text-[10px] tracking-widest hover:bg-primary/5 hover:border-primary transition-all uppercase text-center">
+                    VIEW_MAP
+                </a>
+</div>
+</section>
+<!-- Technical Specs Section -->
+<section class="py-24 px-8 bg-black">
+<div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-24 items-center">
+<div class="relative group">
+<div class="absolute -top-12 -left-12 w-48 h-48 border-t border-l border-primary/20"></div>
+<div class="absolute -bottom-12 -right-12 w-48 h-48 border-b border-r border-primary/20"></div>
+<div class="relative bg-surface-container-high p-4">
+<img class="w-full aspect-video object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCbg6UOqsWWaU7uJGazK1TmBB8I-Xj-sRBLZzeHhjvwMYTB4zpzD_ynfW6SxhR59PjTMX1iNLbEvddXsyif5tQ1XNrjmOjYzvihBpHFvizmzIkOq63Y1ZOHNk-q-Icb7oG4nGbiIaWy7gANBzwRWePCQNSHUCrK3acpRvm07GN7HnU4x6eCMAocH_UBXlJ-s5d7L74TUg2KKntewol2CH7N_Z2L9mBxqUKq4LyGJI_goQRJsns4QHEQTgLNu28jTyES60YYZZJ5pg"/>
+<div class="absolute top-8 left-8 flex flex-col gap-1">
+<span class="bg-primary text-on-primary text-[8px] font-black px-2 py-1 tracking-tighter uppercase">CORE_PROCESSOR_v8</span>
+<span class="bg-black/80 text-primary text-[8px] font-mono px-2 py-1 tracking-tighter">LATENCY: 12ms</span>
+</div>
+</div>
+</div>
+<div class="space-y-8">
+<h2 class="font-headline text-5xl font-black uppercase tracking-tight leading-none italic">
+                        RAW_POWER.<br/>
+<span class="text-on-surface-variant">NO_COMPROMISE.</span>
+</h2>
+<ul class="space-y-6 font-label text-sm tracking-widest uppercase">
+<li class="flex items-center gap-4 group">
+<span class="w-2 h-2 bg-primary group-hover:scale-150 transition-transform"></span>
+<span class="text-on-surface">500+ SUPPORTED DOMAINS</span>
+</li>
+<li class="flex items-center gap-4 group">
+<span class="w-2 h-2 bg-primary group-hover:scale-150 transition-transform"></span>
+<span class="text-on-surface">INTEGRATED_PROXY_CHAIN</span>
+</li>
+<li class="flex items-center gap-4 group">
+<span class="w-2 h-2 bg-primary group-hover:scale-150 transition-transform"></span>
+<span class="text-on-surface">4K_VIDEO_STREAM_PARSING</span>
+</li>
+<li class="flex items-center gap-4 group">
+<span class="w-2 h-2 bg-secondary group-hover:scale-150 transition-transform"></span>
+<span class="text-secondary">AUTO_WIPE_DOWNLOAD_HISTORY</span>
+</li>
+</ul>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full border-t border-lime-400/10 py-4 bg-black flex flex-col md:flex-row justify-between items-center px-8 w-full z-10">
+<div class="flex items-center gap-8 mb-4 md:mb-0">
+<span class="font-['Inter'] text-[10px] tracking-[0.2em] uppercase text-neutral-600">© 2024 KINETIC_SYS_OPERATIONS</span>
+</div>
+<div class="flex gap-8 items-center font-['Inter'] text-[10px] tracking-[0.2em] uppercase">
+<a class="text-neutral-600 hover:text-lime-400 transition-opacity cursor-pointer" href="#">ENCRYPTION_DOCS</a>
+<a class="text-neutral-600 hover:text-lime-400 transition-opacity cursor-pointer" href="#">NODE_STATUS</a>
+<a class="text-neutral-600 hover:text-lime-400 transition-opacity cursor-pointer" href="#">SIGNAL_MAP</a>
+</div>
+<div class="mt-4 md:mt-0 flex gap-4">
+<span class="material-symbols-outlined text-neutral-600 text-sm hover:text-primary transition-colors cursor-pointer">terminal</span>
+<span class="material-symbols-outlined text-neutral-600 text-sm hover:text-primary transition-colors cursor-pointer">share</span>
+</div>
+</footer>
+</body>
+</html>
