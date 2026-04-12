@@ -17,6 +17,7 @@ import { DownloadStatus } from './types';
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DOWNLOAD_DIR = path.resolve('./downloads');
+const YTDLP_PATH = process.env.YTDLP_PATH || 'yt-dlp';
 
 // Ensure downloads directory exists
 if (!fs.existsSync(DOWNLOAD_DIR)) {
@@ -30,7 +31,7 @@ const urlParser = new URLParser();
 const mediaExtractor = new MediaExtractor(adapterRegistry);
 const teraBoxExtractor = new TeraBoxExtractor();
 const progressTracker = new ProgressTracker();
-const downloadManager = new DownloadManager(adapterRegistry, progressTracker, teraBoxExtractor, 'yt-dlp', DOWNLOAD_DIR);
+const downloadManager = new DownloadManager(adapterRegistry, progressTracker, teraBoxExtractor, YTDLP_PATH, DOWNLOAD_DIR);
 
 // Middleware
 app.use(cors());
@@ -317,7 +318,7 @@ app.get('/api/stream', async (req: Request, res: Response) => {
     }
 
     // Use yt-dlp -g to get the direct stream URL
-    const ytdlp = spawn('yt-dlp', [
+    const ytdlp = spawn(YTDLP_PATH, [
       '-g',                          // Print direct URL only
       '-f', 'best[ext=mp4]/best',   // Prefer mp4 for browser compatibility
       '--no-warnings',
