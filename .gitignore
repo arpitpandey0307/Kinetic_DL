@@ -7,6 +7,9 @@ dist/
 # Downloads directory (user files)
 downloads/
 
+# yt-dlp binary
+bin/
+
 # Environment variables
 .env
 .env.local

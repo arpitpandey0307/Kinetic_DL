@@ -1,12 +1,16 @@
 #!/bin/bash
-# Install dependencies
+set -e
+
+echo "Installing npm dependencies..."
 npm install
 
-# Install yt-dlp
-curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /opt/render/project/src/yt-dlp
-chmod a+rx /opt/render/project/src/yt-dlp
+echo "Installing yt-dlp..."
+# Install yt-dlp to a local directory
+mkdir -p ./bin
+curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ./bin/yt-dlp
+chmod a+rx ./bin/yt-dlp
 
-# Build TypeScript
+echo "Building TypeScript..."
 npm run build
 
-echo "Build complete! yt-dlp installed at /opt/render/project/src/yt-dlp"
+echo "Build complete! yt-dlp installed at ./bin/yt-dlp"

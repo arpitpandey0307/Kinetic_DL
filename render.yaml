@@ -8,6 +8,6 @@ services:
       - key: NODE_ENV
         value: production
       - key: YTDLP_PATH
-        value: /opt/render/project/src/yt-dlp
+        value: ./bin/yt-dlp
       - key: PORT
         value: 10000
