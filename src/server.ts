@@ -28,7 +28,7 @@ if (!fs.existsSync(DOWNLOAD_DIR)) {
 // Initialize services
 const adapterRegistry = createAdapterRegistry();
 const urlParser = new URLParser();
-const mediaExtractor = new MediaExtractor(adapterRegistry);
+const mediaExtractor = new MediaExtractor(adapterRegistry, YTDLP_PATH);
 const teraBoxExtractor = new TeraBoxExtractor();
 const progressTracker = new ProgressTracker();
 const downloadManager = new DownloadManager(adapterRegistry, progressTracker, teraBoxExtractor, YTDLP_PATH, DOWNLOAD_DIR);
