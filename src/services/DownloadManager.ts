@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { AdapterRegistry } from '../adapters';
 import { ProgressTracker } from './ProgressTracker';
+import { TeraBoxExtractor } from './TeraBoxExtractor';
 
 interface SessionState {
   sessionId: string;
@@ -34,6 +35,7 @@ export class DownloadManager {
   constructor(
     private adapterRegistry: AdapterRegistry,
     private progressTracker: ProgressTracker,
+    private teraBoxExtractor: TeraBoxExtractor,
     private ytdlpPath: string = 'yt-dlp',
     private downloadDir: string = './downloads'
   ) {}
@@ -122,6 +124,12 @@ export class DownloadManager {
     session.progress.status = DownloadStatus.DOWNLOADING;
 
     try {
+      // Handle TeraBox directly
+      if (TeraBoxExtractor.isTeraBoxUrl(session.url)) {
+        await this.executeTeraBoxDownload(sessionId, session);
+        return;
+      }
+
       const adapter = this.adapterRegistry.getAdapterForUrl(session.url);
       if (!adapter) {
         throw new Error('Unsupported platform');
@@ -230,6 +238,84 @@ export class DownloadManager {
     // If we have it, store the full path
     if (session.progress.filename) {
       session.outputFilePath = session.progress.filename;
+    }
+  }
+
+  private async executeTeraBoxDownload(sessionId: string, session: SessionState): Promise<void> {
+    try {
+      console.log(`[Download ${sessionId}] Extracting TeraBox link: ${session.url}`);
+      const tbResult = await this.teraBoxExtractor.extract(session.url);
+      
+      if (!tbResult.success || tbResult.files.length === 0) {
+        throw new Error(tbResult.error || 'Failed to extract TeraBox file');
+      }
+
+      // Find the selected file from formatId (e.g. terabox-0)
+      let fileIndex = 0;
+      if (session.formatId && session.formatId.startsWith('terabox-')) {
+        fileIndex = parseInt(session.formatId.split('-')[1]) || 0;
+      }
+      if (fileIndex >= tbResult.files.length) fileIndex = 0;
+      
+      const file = tbResult.files[fileIndex];
+      const safeFilename = file.filename.replace(/[^a-zA-Z0-9.\-_ ()\[\]]/g, '_');
+      const outputFilePath = path.join(this.downloadDir, `${sessionId}_${safeFilename}`);
+      
+      session.progress.filename = outputFilePath;
+      session.outputFilePath = outputFilePath;
+      session.progress.totalBytes = file.size;
+
+      console.log(`[Download ${sessionId}] Downloading TeraBox proxy file: ${outputFilePath}`);
+
+      let lastReportTime = 0;
+      let lastDownloadedBytes = 0;
+
+      await this.teraBoxExtractor.downloadFile(file.dlink, outputFilePath, session.url, (downloaded, total) => {
+        // Fast progress reporting (throttle to 4 times per second)
+        const now = Date.now();
+        if (now - lastReportTime > 250) {
+          const deltaSec = (now - lastReportTime) / 1000;
+          const bytesDiff = downloaded - lastDownloadedBytes;
+          const speed = bytesDiff / deltaSec;
+          
+          session.progress.downloadedBytes = downloaded;
+          if (total > 0) session.progress.totalBytes = total;
+          if (session.progress.totalBytes > 0) {
+            session.progress.percent = parseFloat(((downloaded / session.progress.totalBytes) * 100).toFixed(1));
+            session.progress.eta = Math.max(0, Math.floor((session.progress.totalBytes - downloaded) / speed));
+          }
+          session.progress.speed = speed;
+
+          lastReportTime = now;
+          lastDownloadedBytes = downloaded;
+
+          this.progressTracker.updateProgress(sessionId, session.progress);
+        }
+      });
+
+      // Done
+      session.status = DownloadStatus.COMPLETED;
+      session.progress.status = DownloadStatus.COMPLETED;
+      session.progress.percent = 100;
+      session.endTime = Date.now();
+      
+      this.progressTracker.updateProgress(sessionId, session.progress);
+      console.log(`[Download ${sessionId}] TeraBox download completed successfully`);
+
+    } catch (error: any) {
+      session.status = DownloadStatus.FAILED;
+      session.progress.status = DownloadStatus.FAILED;
+      session.error = {
+        code: ErrorCode.UNKNOWN_ERROR,
+        message: error.message,
+        retryable: true
+      };
+      session.endTime = Date.now();
+
+      console.error(`[Download ${sessionId}] TeraBox download error:`, error.message);
+      this.progressTracker.updateProgress(sessionId, { status: DownloadStatus.FAILED });
+    } finally {
+      this.processQueue();
     }
   }
 

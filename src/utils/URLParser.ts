@@ -17,7 +17,14 @@ export class URLParser {
     ]],
     [Platform.TERABOX, [
       /terabox\.com\/s\/([a-zA-Z0-9_-]+)/,
-      /1024terabox\.com\/s\/([a-zA-Z0-9_-]+)/
+      /1024terabox\.com\/s\/([a-zA-Z0-9_-]+)/,
+      /teraboxapp\.com\/s\/([a-zA-Z0-9_-]+)/,
+      /teraboxurl\.com\/s\/([a-zA-Z0-9_-]+)/,
+      /freeterabox\.com\/s\/([a-zA-Z0-9_-]+)/,
+      /teraboxlink\.com\/s\/([a-zA-Z0-9_-]+)/,
+      /terasharelink\.com\/s\/([a-zA-Z0-9_-]+)/,
+      /terafileshare\.com\/s\/([a-zA-Z0-9_-]+)/,
+      /1024tera\.com\/s\/([a-zA-Z0-9_-]+)/
     ]],
     [Platform.REDDIT, [
       /reddit\.com\/r\/[^\/]+\/comments\/([a-z0-9]+)/,

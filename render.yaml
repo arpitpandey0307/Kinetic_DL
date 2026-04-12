@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: kinetic-downloader
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: YTDLP_PATH
+        value: yt-dlp
+      - key: PORT
+        value: 10000

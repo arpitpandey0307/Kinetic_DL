@@ -240,9 +240,49 @@ class VideoPlayerModal {
         </div>
       `;
 
-      this.videoEl.src = result.streamUrl;
-      this.videoEl.load();
-      this.videoEl.play().catch(() => {});
+      // Cleanup any previous HLS instance
+      if (this._hls) {
+        this._hls.destroy();
+        this._hls = null;
+      }
+
+      // HLS stream (TeraBox M3U8) — use HLS.js
+      if (result.isHLS && typeof Hls !== 'undefined' && Hls.isSupported()) {
+        console.log('[VideoPlayer] Using HLS.js for M3U8 stream');
+        const hls = new Hls({
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          enableWorker: true
+        });
+        this._hls = hls;
+
+        hls.loadSource(result.streamUrl);
+        hls.attachMedia(this.videoEl);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          this.videoEl.play().catch(() => {});
+        });
+        
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          console.error('[HLS Error]', data.type, data.details);
+          if (data.fatal) {
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+              console.log('[HLS] Network error, trying to recover...');
+              hls.startLoad();
+            } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+              console.log('[HLS] Media error, trying to recover...');
+              hls.recoverMediaError();
+            } else {
+              this.showPlayerError('HLS playback failed: ' + data.details);
+            }
+          }
+        });
+      } else {
+        // Standard direct URL playback
+        this.videoEl.src = result.streamUrl;
+        this.videoEl.load();
+        this.videoEl.play().catch(() => {});
+      }
     } catch (error) {
       console.error('Stream play error:', error);
       this.showPlayerError('Network error while fetching stream');
@@ -283,9 +323,15 @@ class VideoPlayerModal {
   }
 
   close() {
+    // Cleanup HLS instance
+    if (this._hls) {
+      this._hls.destroy();
+      this._hls = null;
+    }
     this.videoEl.pause();
     this.videoEl.removeAttribute('src');
     this.videoEl.load();
+    this.videoEl.style.display = '';
     this.modal.style.opacity = '0';
     setTimeout(() => { this.modal.style.display = 'none'; }, 300);
   }

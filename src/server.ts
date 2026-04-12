@@ -2,11 +2,15 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
+import https from 'https';
+import http from 'http';
+import { URL } from 'url';
 import { spawn } from 'child_process';
 import { createAdapterRegistry } from './adapters';
 import { MediaExtractor } from './services/MediaExtractor';
 import { DownloadManager } from './services/DownloadManager';
 import { ProgressTracker } from './services/ProgressTracker';
+import { TeraBoxExtractor } from './services/TeraBoxExtractor';
 import { URLParser } from './utils/URLParser';
 import { DownloadStatus } from './types';
 
@@ -24,8 +28,9 @@ if (!fs.existsSync(DOWNLOAD_DIR)) {
 const adapterRegistry = createAdapterRegistry();
 const urlParser = new URLParser();
 const mediaExtractor = new MediaExtractor(adapterRegistry);
+const teraBoxExtractor = new TeraBoxExtractor();
 const progressTracker = new ProgressTracker();
-const downloadManager = new DownloadManager(adapterRegistry, progressTracker, 'yt-dlp', DOWNLOAD_DIR);
+const downloadManager = new DownloadManager(adapterRegistry, progressTracker, teraBoxExtractor, 'yt-dlp', DOWNLOAD_DIR);
 
 // Middleware
 app.use(cors());
@@ -65,9 +70,55 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
       });
     }
 
+    // Handle TeraBox directly
+    if (TeraBoxExtractor.isTeraBoxUrl(url)) {
+      console.log(`Analyzing TeraBox URL: ${url}`);
+      const tbResult = await teraBoxExtractor.extract(url);
+      
+      if (!tbResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_URL', message: tbResult.error, retryable: false }
+        });
+      }
+
+      // Convert to standard result format
+      const formats = tbResult.files.map((f, i) => ({
+        formatId: `terabox-${i}`,
+        resolution: 'unknown',
+        codec: 'unknown',
+        container: 'mp4',
+        filesize: f.size
+      }));
+
+      const qualities = tbResult.files.map((f, i) => ({
+        label: `TeraBox File ${i + 1} (${(f.size / 1024 / 1024).toFixed(1)}MB)`,
+        resolution: 'unknown',
+        formatId: `terabox-${i}`,
+        codec: 'unknown',
+        container: 'mp4',
+        filesize: f.size
+      }));
+
+      return res.json({
+        success: true,
+        data: {
+          success: true,
+          metadata: {
+            title: tbResult.title || tbResult.files[0].filename,
+            thumbnail: tbResult.thumbnail || '',
+            duration: 0,
+            formats
+          },
+          availableQualities: qualities,
+          teraBoxData: tbResult.files // Secret store for DownloadManager
+        }
+      });
+    }
+
     console.log(`Analyzing URL: ${url} (platform: ${parseResult.platform})`);
 
-    // Analyze URL
+    // Analyze URL using yt-dlp
     const result = await mediaExtractor.analyze(url);
 
     if (!result.success) {
@@ -255,6 +306,16 @@ app.get('/api/stream', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: { code: 'INVALID_REQUEST', message: 'URL is required' } });
     }
 
+    if (TeraBoxExtractor.isTeraBoxUrl(url)) {
+      // TeraBox: return the M3U8 proxy URL for HLS playback
+      const proxyStreamUrl = `/api/terabox-stream?url=${encodeURIComponent(url)}`;
+      return res.json({ 
+        success: true, 
+        streamUrl: proxyStreamUrl,
+        isHLS: true  // Tell frontend to use HLS.js
+      });
+    }
+
     // Use yt-dlp -g to get the direct stream URL
     const ytdlp = spawn('yt-dlp', [
       '-g',                          // Print direct URL only
@@ -298,6 +359,38 @@ app.get('/api/stream', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Stream error:', error);
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Stream failed' } });
+  }
+});
+
+// GET /api/terabox-stream?url= - Serve M3U8 playlist for TeraBox video (HLS streaming)
+app.get('/api/terabox-stream', async (req: Request, res: Response) => {
+  try {
+    const url = req.query.url as string;
+    if (!url || !TeraBoxExtractor.isTeraBoxUrl(url)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_REQUEST', message: 'Valid TeraBox URL required' } });
+    }
+
+    console.log('[TeraBox Stream] Getting M3U8 for:', url);
+    const m3u8Info = await teraBoxExtractor.getM3U8StreamUrl(url);
+    
+    if (!m3u8Info) {
+      return res.status(404).json({ success: false, error: { code: 'NO_STREAM', message: 'Could not extract TeraBox stream. Link may be expired or private.' } });
+    }
+
+    console.log('[TeraBox Stream] Serving M3U8 playlist');
+    
+    // Serve the M3U8 content directly — the .ts segment URLs inside are
+    // direct CDN links (v4.freeterabox.com) that don't need cookies/auth
+    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(m3u8Info.m3u8Content);
+
+  } catch (error: any) {
+    console.error('[TeraBox Stream] Error:', error.message);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'TeraBox stream failed' } });
+    }
   }
 });
 

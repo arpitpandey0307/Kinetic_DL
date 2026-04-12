@@ -1,0 +1,13 @@
+Cookies: csrfToken=d2ima3cTdtLb31e8Ld9e02-q; browserid=CihozcBSAZqySaJIiTlTOVKuxRSmhJ6YgILN9pdmljNr74OSCm6McY
+share/list errno: 0
+File: jaal.mp4
+fs_id: 354414924445790
+dlink from list: (empty)
+path: /2025-11-26 12-01/jaal.mp4
+md5: bcaa733b03aab1e092a21540cd37be12
+
+--- Testing /api/filemetas ---
+filemetas response: {"errno":-6,"request_id":57645152752999600}
+
+--- Testing /share/streaming ---
+streaming response: {"errno":2,"newno":"","request_id":57645198884196009,"show_msg":"invalid timestamp"}
