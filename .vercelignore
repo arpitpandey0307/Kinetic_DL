@@ -1,9 +1,0 @@
-node_modules
-src
-.env
-*.log
-.DS_Store
-downloads
-temp
-.kiro
-stitch

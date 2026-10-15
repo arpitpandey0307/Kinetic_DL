@@ -1,0 +1,14 @@
+node_modules
+dist
+build-test
+downloads
+bin
+.git
+.env
+.env.*
+!.env.example
+*.log
+.kiro
+.vscode
+.idea
+test
