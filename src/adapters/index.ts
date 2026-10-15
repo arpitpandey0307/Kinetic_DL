@@ -1,4 +1,4 @@
-export { PlatformAdapter, AdapterRegistry } from './PlatformAdapter';
+export { PlatformAdapter, AdapterRegistry, BaseYtDlpAdapter, hostnameOf } from './PlatformAdapter';
 export { YouTubeAdapter } from './YouTubeAdapter';
 export { InstagramAdapter } from './InstagramAdapter';
 export { TikTokAdapter } from './TikTokAdapter';
@@ -8,7 +8,8 @@ export {
   PinterestAdapter,
   TwitterAdapter,
   FacebookAdapter,
-  VimeoAdapter
+  VimeoAdapter,
+  TERABOX_HOST_PATTERN
 } from './OtherAdapters';
 export { GenericAdapter } from './GenericAdapter';
 
@@ -26,11 +27,11 @@ import {
 } from './OtherAdapters';
 import { GenericAdapter } from './GenericAdapter';
 
-// Create and configure the global adapter registry
+// Create and configure the adapter registry
 export function createAdapterRegistry(): AdapterRegistry {
   const registry = new AdapterRegistry();
-  
-  // Register platform-specific adapters first (they take priority)
+
+  // Platform-specific adapters first (they take priority)
   registry.register(new YouTubeAdapter());
   registry.register(new InstagramAdapter());
   registry.register(new TikTokAdapter());
@@ -40,9 +41,9 @@ export function createAdapterRegistry(): AdapterRegistry {
   registry.register(new TwitterAdapter());
   registry.register(new FacebookAdapter());
   registry.register(new VimeoAdapter());
-  
-  // Register generic adapter LAST as catch-all fallback
+
+  // Generic adapter LAST as catch-all fallback
   registry.register(new GenericAdapter());
-  
+
   return registry;
 }

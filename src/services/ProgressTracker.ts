@@ -1,19 +1,23 @@
-import { ChildProcess } from 'child_process';
-import { DownloadProgress, DownloadStatus } from '../types';
+import { DownloadProgress, DownloadStatus, TERMINAL_STATUSES } from '../types';
 
 type ProgressCallback = (progress: DownloadProgress) => void;
 type Unsubscribe = () => void;
 
+/**
+ * Holds live progress for every session and fans updates out to subscribers
+ * (the SSE endpoint). Every download path reports through updateProgress().
+ */
 export class ProgressTracker {
-  private progressState: Map<string, DownloadProgress> = new Map();
-  private subscribers: Map<string, Set<ProgressCallback>> = new Map();
-  private lastUpdate: Map<string, number> = new Map();
-  private updateThrottle = 500; // ms
+  private progressState = new Map<string, DownloadProgress>();
+  private subscribers = new Map<string, Set<ProgressCallback>>();
+  private lastNotify = new Map<string, number>();
 
-  trackSession(sessionId: string, process: ChildProcess): void {
+  constructor(private throttleMs = 250) {}
+
+  init(sessionId: string, status: DownloadStatus = DownloadStatus.QUEUED): DownloadProgress {
     const progress: DownloadProgress = {
       sessionId,
-      status: DownloadStatus.DOWNLOADING,
+      status,
       percent: 0,
       downloadedBytes: 0,
       totalBytes: 0,
@@ -21,146 +25,79 @@ export class ProgressTracker {
       eta: 0,
       filename: ''
     };
-
     this.progressState.set(sessionId, progress);
-
-    process.stdout?.on('data', (data) => {
-      this.parseProgressOutput(sessionId, data.toString());
-    });
-
-    process.on('close', (code) => {
-      const currentProgress = this.progressState.get(sessionId);
-      if (currentProgress) {
-        currentProgress.status = code === 0 ? DownloadStatus.COMPLETED : DownloadStatus.FAILED;
-        currentProgress.percent = code === 0 ? 100 : currentProgress.percent;
-        this.notifySubscribers(sessionId, currentProgress);
-      }
-    });
+    return progress;
   }
 
   getProgress(sessionId: string): DownloadProgress | null {
-    return this.progressState.get(sessionId) || null;
+    const progress = this.progressState.get(sessionId);
+    return progress ? { ...progress } : null;
   }
 
   subscribe(sessionId: string, callback: ProgressCallback): Unsubscribe {
-    if (!this.subscribers.has(sessionId)) {
-      this.subscribers.set(sessionId, new Set());
+    let subs = this.subscribers.get(sessionId);
+    if (!subs) {
+      subs = new Set();
+      this.subscribers.set(sessionId, subs);
     }
+    subs.add(callback);
 
-    this.subscribers.get(sessionId)!.add(callback);
+    // Send current state immediately so late subscribers are never left waiting
+    const current = this.progressState.get(sessionId);
+    if (current) callback({ ...current });
 
-    // Send current progress immediately
-    const currentProgress = this.progressState.get(sessionId);
-    if (currentProgress) {
-      callback(currentProgress);
-    }
-
-    // Return unsubscribe function
     return () => {
-      const subs = this.subscribers.get(sessionId);
-      if (subs) {
-        subs.delete(callback);
-        if (subs.size === 0) {
-          this.subscribers.delete(sessionId);
-        }
-      }
+      const set = this.subscribers.get(sessionId);
+      if (!set) return;
+      set.delete(callback);
+      if (set.size === 0) this.subscribers.delete(sessionId);
     };
   }
 
+  /**
+   * Merge an update. Percent never goes backwards while a download is active.
+   * Status changes are always delivered; plain progress ticks are throttled.
+   */
   updateProgress(sessionId: string, updates: Partial<DownloadProgress>): void {
     const progress = this.progressState.get(sessionId);
     if (!progress) return;
+    if (TERMINAL_STATUSES.has(progress.status)) return; // final state is immutable
 
-    // Ensure monotonicity for percent
-    if (updates.percent !== undefined && updates.percent < progress.percent) {
-      updates.percent = progress.percent;
+    const next = { ...updates };
+    if (next.percent !== undefined) {
+      next.percent = Math.min(100, Math.max(progress.percent, Number(next.percent.toFixed(1))));
+    }
+    const statusChanged = next.status !== undefined && next.status !== progress.status;
+    Object.assign(progress, next);
+
+    if (progress.status === DownloadStatus.COMPLETED) progress.percent = 100;
+    if (TERMINAL_STATUSES.has(progress.status)) {
+      progress.speed = 0;
+      progress.eta = 0;
     }
 
-    Object.assign(progress, updates);
-    this.notifySubscribers(sessionId, progress);
-  }
-
-  private parseProgressOutput(sessionId: string, output: string): void {
-    const progress = this.progressState.get(sessionId);
-    if (!progress) return;
-
-    // Throttle updates
-    const lastUpdate = this.lastUpdate.get(sessionId) || 0;
     const now = Date.now();
-    if (now - lastUpdate < this.updateThrottle) {
-      return;
-    }
-    this.lastUpdate.set(sessionId, now);
-
-    // Parse yt-dlp progress output
-    const percentMatch = output.match(/(\d+\.?\d*)%/);
-    const sizeMatch = output.match(/of\s+([\d.]+)([KMG]iB)/);
-    const speedMatch = output.match(/at\s+([\d.]+)([KMG]iB)\/s/);
-    const etaMatch = output.match(/ETA\s+(\d+):(\d+)/);
-    const filenameMatch = output.match(/Destination:\s+(.+)/);
-
-    let updated = false;
-
-    if (percentMatch) {
-      const newPercent = parseFloat(percentMatch[1]);
-      // Ensure monotonicity
-      if (newPercent >= progress.percent) {
-        progress.percent = newPercent;
-        updated = true;
-      }
-    }
-
-    if (sizeMatch) {
-      const size = parseFloat(sizeMatch[1]);
-      const unit = sizeMatch[2];
-      progress.totalBytes = this.convertToBytes(size, unit);
-      progress.downloadedBytes = (progress.totalBytes * progress.percent) / 100;
-      updated = true;
-    }
-
-    if (speedMatch) {
-      const speed = parseFloat(speedMatch[1]);
-      const unit = speedMatch[2];
-      progress.speed = this.convertToBytes(speed, unit);
-      updated = true;
-    }
-
-    if (etaMatch) {
-      const minutes = parseInt(etaMatch[1]);
-      const seconds = parseInt(etaMatch[2]);
-      progress.eta = minutes * 60 + seconds;
-      updated = true;
-    }
-
-    if (filenameMatch) {
-      progress.filename = filenameMatch[1].trim();
-      updated = true;
-    }
-
-    if (updated) {
+    if (statusChanged || now - (this.lastNotify.get(sessionId) || 0) >= this.throttleMs) {
+      this.lastNotify.set(sessionId, now);
       this.notifySubscribers(sessionId, progress);
     }
   }
 
   private notifySubscribers(sessionId: string, progress: DownloadProgress): void {
     const subs = this.subscribers.get(sessionId);
-    if (subs) {
-      subs.forEach(callback => callback({ ...progress }));
+    if (!subs) return;
+    for (const callback of Array.from(subs)) {
+      try {
+        callback({ ...progress });
+      } catch (e) {
+        console.error(`[ProgressTracker] subscriber error for ${sessionId}:`, e);
+      }
     }
-  }
-
-  private convertToBytes(value: number, unit: string): number {
-    const units: { [key: string]: number } = {
-      'KiB': 1024,
-      'MiB': 1024 * 1024,
-      'GiB': 1024 * 1024 * 1024
-    };
-    return value * (units[unit] || 1);
   }
 
   cleanup(sessionId: string): void {
     this.progressState.delete(sessionId);
     this.subscribers.delete(sessionId);
-    this.lastUpdate.delete(sessionId);
+    this.lastNotify.delete(sessionId);
   }
 }

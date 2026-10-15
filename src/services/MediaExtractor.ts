@@ -1,196 +1,168 @@
-import { spawn } from 'child_process';
-import { AnalysisResult, MediaMetadata, QualityOption, ExtractorError, ErrorCode } from '../types';
+import { AnalysisResult, MediaFormat, MediaMetadata, QualityOption, ErrorCode } from '../types';
 import { AdapterRegistry } from '../adapters';
+import { YtDlp } from './YtDlp';
+import { classifyError, withRetry } from '../utils/errors';
+
+interface CacheEntry {
+  result: AnalysisResult;
+  timestamp: number;
+}
+
+const CODEC_PREFERENCE = ['avc1', 'h264', 'vp09', 'vp9', 'hev1', 'hvc1', 'av01'];
+
+function codecRank(codec?: string): number {
+  if (!codec) return CODEC_PREFERENCE.length;
+  const idx = CODEC_PREFERENCE.findIndex(c => codec.toLowerCase().startsWith(c));
+  return idx === -1 ? CODEC_PREFERENCE.length : idx;
+}
+
+function hasVideo(f: MediaFormat): boolean {
+  if (f.vcodec && f.vcodec !== 'none') return true;
+  // Some extractors omit vcodec but do report dimensions
+  return !f.vcodec && !!f.height;
+}
+
+function hasAudio(f: MediaFormat): boolean {
+  return !!f.acodec && f.acodec !== 'none';
+}
+
+/** Short side of the frame, so 1080x1920 vertical video still counts as 1080p */
+function qualityHeight(f: MediaFormat): number {
+  if (f.width && f.height) return Math.min(f.width, f.height);
+  return f.height || 0;
+}
+
+export function getQualityLabel(height: number): string {
+  if (height >= 2160) return '4K_ULTRA';
+  if (height >= 1440) return '2K_QHD';
+  if (height >= 1080) return '1080P_HD';
+  if (height >= 720) return '720P_HD';
+  if (height >= 480) return '480P_SD';
+  if (height > 0) return `${height}P`;
+  return 'SOURCE';
+}
+
+/**
+ * Collapse yt-dlp's format list to one option per resolution, preferring
+ * browser-friendly codecs (H.264 > VP9 > AV1), direct HTTP over HLS, then size.
+ */
+export function extractQualityOptions(metadata: MediaMetadata): QualityOption[] {
+  const videoFormats = metadata.formats.filter(hasVideo);
+  const bestAudio = metadata.formats
+    .filter(f => hasAudio(f) && !hasVideo(f))
+    .sort((a, b) => b.filesize - a.filesize)[0];
+
+  const byHeight = new Map<number, MediaFormat>();
+  for (const f of videoFormats) {
+    const h = qualityHeight(f);
+    const current = byHeight.get(h);
+    if (!current || compareFormats(f, current) < 0) byHeight.set(h, f);
+  }
+
+  return Array.from(byHeight.entries())
+    .sort(([a], [b]) => b - a)
+    .map(([h, f]) => {
+      const withAudio = hasAudio(f);
+      return {
+        label: getQualityLabel(h),
+        resolution: f.width && f.height ? `${f.width}x${f.height}` : (h ? `${h}p` : 'source'),
+        formatId: f.formatId,
+        codec: (f.vcodec || f.codec || 'unknown').split('.')[0],
+        container: f.container,
+        filesize: f.filesize + (withAudio ? 0 : bestAudio?.filesize || 0),
+        hasAudio: withAudio,
+        fps: f.fps
+      };
+    });
+}
+
+function compareFormats(a: MediaFormat, b: MediaFormat): number {
+  const codec = codecRank(a.vcodec) - codecRank(b.vcodec);
+  if (codec !== 0) return codec;
+  const aHls = /m3u8|dash/.test(a.protocol || '') ? 1 : 0;
+  const bHls = /m3u8|dash/.test(b.protocol || '') ? 1 : 0;
+  if (aHls !== bHls) return aHls - bHls;
+  const fps = (b.fps || 0) - (a.fps || 0);
+  if (fps !== 0) return fps;
+  return (b.filesize || b.tbr || 0) - (a.filesize || a.tbr || 0);
+}
 
 export class MediaExtractor {
-  private cache: Map<string, { result: AnalysisResult; timestamp: number }> = new Map();
-  private cacheTimeout = 5 * 60 * 1000; // 5 minutes
+  private cache = new Map<string, CacheEntry>();
+  private inflight = new Map<string, Promise<AnalysisResult>>();
+  private cacheTimeout = 5 * 60 * 1000;
+  private maxCacheEntries = 200;
 
   constructor(
     private adapterRegistry: AdapterRegistry,
-    private ytdlpPath: string = 'yt-dlp'
+    private ytdlp: YtDlp,
+    private timeoutMs = 60_000,
+    private retryDelayMs = 1000
   ) {}
 
   async analyze(url: string): Promise<AnalysisResult> {
-    // Check cache
     const cached = this.cache.get(url);
-    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
-      return cached.result;
+    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) return cached.result;
+
+    // Identical concurrent requests share one yt-dlp run
+    const pending = this.inflight.get(url);
+    if (pending) return pending;
+
+    const promise = this.doAnalyze(url).finally(() => this.inflight.delete(url));
+    this.inflight.set(url, promise);
+    return promise;
+  }
+
+  /** Look up a format from a recent analysis (used to plan the download) */
+  getCachedFormat(url: string, formatId: string): MediaFormat | undefined {
+    return this.cache.get(url)?.result.metadata.formats?.find(f => f.formatId === formatId);
+  }
+
+  private async doAnalyze(url: string): Promise<AnalysisResult> {
+    const adapter = this.adapterRegistry.getAdapterForUrl(url);
+    if (!adapter) {
+      return this.failure({ code: ErrorCode.INVALID_URL, message: 'Unsupported platform or invalid URL', retryable: false });
     }
 
     try {
-      const adapter = this.adapterRegistry.getAdapterForUrl(url);
-      if (!adapter) {
-        return {
-          success: false,
-          metadata: {} as MediaMetadata,
-          availableQualities: [],
-          error: {
-            code: ErrorCode.INVALID_URL,
-            message: 'Unsupported platform or invalid URL',
-            retryable: false
-          }
-        };
-      }
-
-      const rawData = await this.fetchMetadata(url);
+      const rawData = await withRetry(() => this.fetchMetadata(url), { retries: 2, baseDelayMs: this.retryDelayMs });
       const metadata = adapter.parseMetadata(rawData);
-      const availableQualities = this.extractQualityOptions(metadata);
-
       const result: AnalysisResult = {
         success: true,
+        platform: adapter.name,
         metadata,
-        availableQualities
+        availableQualities: extractQualityOptions(metadata)
       };
-
-      // Cache the result
-      this.cache.set(url, { result, timestamp: Date.now() });
-
+      this.remember(url, result);
       return result;
-    } catch (error: any) {
-      const extractorError = this.classifyError(error);
-      return {
-        success: false,
-        metadata: {} as MediaMetadata,
-        availableQualities: [],
-        error: extractorError
-      };
+    } catch (error) {
+      return this.failure(classifyError(error));
     }
   }
 
-  async getFormats(url: string): Promise<any[]> {
-    const rawData = await this.fetchMetadata(url);
-    return rawData.formats || [];
+  private failure(error: AnalysisResult['error']): AnalysisResult {
+    return { success: false, metadata: {} as MediaMetadata, availableQualities: [], error };
+  }
+
+  private remember(url: string, result: AnalysisResult): void {
+    this.cache.delete(url);
+    this.cache.set(url, { result, timestamp: Date.now() });
+    while (this.cache.size > this.maxCacheEntries) {
+      const oldest = this.cache.keys().next().value as string;
+      this.cache.delete(oldest);
+    }
   }
 
   private async fetchMetadata(url: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const args = ['--dump-json', '--no-warnings', '--no-playlist', url];
-      const process = spawn(this.ytdlpPath, args);
-
-      let stdout = '';
-      let stderr = '';
-
-      const timeout = setTimeout(() => {
-        process.kill();
-        reject(new Error('Analysis timeout after 60 seconds'));
-      }, 60000);
-
-      process.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
-
-      process.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
-
-      process.on('close', (code) => {
-        clearTimeout(timeout);
-
-        if (code !== 0) {
-          reject(new Error(stderr || `yt-dlp exited with code ${code}`));
-          return;
-        }
-
-        try {
-          const data = JSON.parse(stdout);
-          resolve(data);
-        } catch (error) {
-          reject(new Error('Failed to parse yt-dlp output'));
-        }
-      });
-
-      process.on('error', (error) => {
-        clearTimeout(timeout);
-        reject(error);
-      });
-    });
-  }
-
-  private extractQualityOptions(metadata: MediaMetadata): QualityOption[] {
-    const qualityMap = new Map<string, QualityOption>();
-
-    for (const format of metadata.formats) {
-      // Skip audio-only formats for video quality options
-      if (!format.vcodec || format.vcodec === 'none') continue;
-
-      const resolution = format.resolution;
-      const existing = qualityMap.get(resolution);
-
-      // Keep the format with the largest filesize (usually best quality)
-      if (!existing || format.filesize > existing.filesize) {
-        qualityMap.set(resolution, {
-          label: this.getQualityLabel(resolution),
-          resolution,
-          formatId: format.formatId,
-          codec: format.codec,
-          container: format.container,
-          filesize: format.filesize
-        });
-      }
+    const { stdout } = await this.ytdlp.run(
+      ['--dump-single-json', '--no-playlist', '--no-warnings', '--', url],
+      this.timeoutMs
+    );
+    try {
+      return JSON.parse(stdout);
+    } catch {
+      throw new Error('Failed to parse yt-dlp output');
     }
-
-    // Sort by resolution (highest first)
-    const qualities = Array.from(qualityMap.values());
-    qualities.sort((a, b) => {
-      const aHeight = parseInt(a.resolution) || 0;
-      const bHeight = parseInt(b.resolution) || 0;
-      return bHeight - aHeight;
-    });
-
-    return qualities;
-  }
-
-  private getQualityLabel(resolution: string): string {
-    const height = parseInt(resolution);
-    if (height >= 2160) return '4K_ULTRA';
-    if (height >= 1440) return '2K_QHD';
-    if (height >= 1080) return '1080P_HD';
-    if (height >= 720) return '720P_STD';
-    if (height >= 480) return '480P';
-    return '360P';
-  }
-
-  private classifyError(error: Error): ExtractorError {
-    const message = error.message.toLowerCase();
-
-    if (message.includes('timeout') || message.includes('econnrefused') || message.includes('etimedout')) {
-      return {
-        code: ErrorCode.NETWORK_ERROR,
-        message: 'Network error: Check connection and retry',
-        retryable: true
-      };
-    }
-
-    if (message.includes('private') || message.includes('restricted') || message.includes('403')) {
-      return {
-        code: ErrorCode.ACCESS_DENIED,
-        message: 'Access denied: Video is private or restricted',
-        retryable: false
-      };
-    }
-
-    if (message.includes('unavailable') || message.includes('not available') || message.includes('503')) {
-      return {
-        code: ErrorCode.PLATFORM_UNAVAILABLE,
-        message: 'Platform unavailable: Try again later',
-        retryable: true
-      };
-    }
-
-    if (message.includes('not found') || message.includes('404') || message.includes('removed') || message.includes('deleted')) {
-      return {
-        code: ErrorCode.VIDEO_NOT_FOUND,
-        message: 'Video not found: Content no longer available',
-        retryable: false
-      };
-    }
-
-    return {
-      code: ErrorCode.UNKNOWN_ERROR,
-      message: 'Unknown error occurred',
-      retryable: false
-    };
   }
 
   clearCache(): void {

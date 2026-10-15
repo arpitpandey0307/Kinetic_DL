@@ -22,14 +22,25 @@ export enum DownloadStatus {
   CANCELLED = 'CANCELLED'
 }
 
+export const TERMINAL_STATUSES: ReadonlySet<DownloadStatus> = new Set([
+  DownloadStatus.COMPLETED,
+  DownloadStatus.FAILED,
+  DownloadStatus.CANCELLED
+]);
+
 export enum ErrorCode {
   NETWORK_ERROR = 'NETWORK_ERROR',
   ACCESS_DENIED = 'ACCESS_DENIED',
   PLATFORM_UNAVAILABLE = 'PLATFORM_UNAVAILABLE',
   VIDEO_NOT_FOUND = 'VIDEO_NOT_FOUND',
   INVALID_URL = 'INVALID_URL',
+  FILE_TOO_LARGE = 'FILE_TOO_LARGE',
+  DEPENDENCY_MISSING = 'DEPENDENCY_MISSING',
+  CANCELLED = 'CANCELLED',
   UNKNOWN_ERROR = 'UNKNOWN_ERROR'
 }
+
+export type AudioFormat = 'mp3' | 'flac';
 
 export interface ParseResult {
   isValid: boolean;
@@ -44,9 +55,13 @@ export interface MediaFormat {
   codec: string;
   container: string;
   filesize: number;
+  width?: number;
+  height?: number;
   fps?: number;
   vcodec?: string;
   acodec?: string;
+  protocol?: string;
+  tbr?: number;
 }
 
 export interface MediaMetadata {
@@ -65,23 +80,28 @@ export interface QualityOption {
   codec: string;
   container: string;
   filesize: number;
+  hasAudio: boolean;
+  fps?: number;
 }
 
 export interface ExtractOptions {
   audioOnly?: boolean;
-  quality?: string;
-  format?: string;
+  audioFormat?: AudioFormat;
   formatId?: string;
+  /** true when the chosen format already contains an audio track */
+  formatHasAudio?: boolean;
 }
 
 export interface ExtractorError {
   code: ErrorCode;
   message: string;
   retryable: boolean;
+  details?: string;
 }
 
 export interface AnalysisResult {
   success: boolean;
+  platform?: Platform;
   metadata: MediaMetadata;
   availableQualities: QualityOption[];
   error?: ExtractorError;
@@ -91,7 +111,7 @@ export interface DownloadRequest {
   url: string;
   formatId: string;
   audioOnly: boolean;
-  outputPath?: string;
+  audioFormat?: AudioFormat;
 }
 
 export interface DownloadProgress {
@@ -102,7 +122,9 @@ export interface DownloadProgress {
   totalBytes: number;
   speed: number;
   eta: number;
+  /** Base name of the output file — never a server path */
   filename: string;
+  error?: ExtractorError;
 }
 
 export interface DownloadSession {
@@ -111,10 +133,14 @@ export interface DownloadSession {
   url: string;
   formatId: string;
   audioOnly: boolean;
+  audioFormat?: AudioFormat;
   progress: DownloadProgress;
-  startTime: number;
+  createdAt: number;
+  startTime?: number;
   endTime?: number;
   error?: ExtractorError;
+  fileAvailable: boolean;
+  expiresAt?: number;
 }
 
 export interface DownloadRecord {
@@ -136,5 +162,6 @@ export interface DownloadRecord {
 export interface ApiError {
   code: string;
   message: string;
-  details?: any;
+  retryable?: boolean;
+  details?: string;
 }
