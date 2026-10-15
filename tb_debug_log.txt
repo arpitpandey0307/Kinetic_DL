@@ -1,9 +1,0 @@
-=== Step 1: Fetch share page ===
-cookies length: 0
-jsToken: NONE
-
-=== Step 2: Get shorturlinfo ===
-ERROR: Cannot read properties of undefined (reading '0')
-TypeError: Cannot read properties of undefined (reading '0')
-    at DebugExtractor.debugDlink (C:\Users\Lenovo\Pictures\downloder\debug_dlink.ts:28:29)
-    at processTicksAndRejections (node:internal/process/task_queues:103:5)
