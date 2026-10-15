@@ -26,6 +26,8 @@ export interface AppDeps {
   healthCheck?: () => Promise<Record<string, unknown>>;
   /** Override DNS resolution (tests) */
   resolver?: Resolver;
+  /** Directory of static frontend files */
+  publicDir?: string;
 }
 
 const FORMAT_ID_PATTERN = /^[A-Za-z0-9_.+-]{1,64}$/;
@@ -84,7 +86,7 @@ export function createApp(deps: AppDeps) {
     next();
   });
 
-  app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
+  app.use(express.static(deps.publicDir || path.join(__dirname, '..', 'public'), { maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
 
   const generalLimiter = rateLimit({ windowMs: config.rateLimitWindowMs, max: config.rateLimitMaxRequests, name: 'requests' });
   const downloadLimiter = rateLimit({ windowMs: config.rateLimitWindowMs, max: config.downloadRateLimitMax, name: 'downloads' });

@@ -98,6 +98,7 @@ export class YtDlp {
           retryable: true
         })));
       }, timeoutMs);
+      timer.unref();
 
       child.stdout?.on('data', d => {
         if (stdout.length < MAX_CAPTURE) stdout += d.toString();

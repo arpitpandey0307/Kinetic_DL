@@ -377,6 +377,7 @@ export class DownloadManager {
           retryable: true
         });
       }, this.downloadTimeoutMs);
+      timer.unref();
 
       const onLine = (line: string) => {
         const parsed = parseYtDlpLine(line);
