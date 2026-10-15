@@ -23,6 +23,13 @@ function list(name: string): string[] {
     .filter(Boolean);
 }
 
+/** Accept either a full cookie header or just the value of the "ndus" cookie */
+function normalizeTeraboxCookie(raw: string): string {
+  const value = raw.trim();
+  if (!value) return '';
+  return value.includes('=') ? value : `ndus=${value}`;
+}
+
 export interface AppConfig {
   port: number;
   nodeEnv: string;
@@ -31,6 +38,7 @@ export interface AppConfig {
   ffmpegLocation: string;
   ytdlpJsRuntimes: string[];
   ytdlpCookiesFile: string;
+  teraboxCookie: string;
   maxConcurrentDownloads: number;
   maxQueueLength: number;
   maxFileSize: number;
@@ -56,6 +64,7 @@ export function loadConfig(): AppConfig {
     // e.g. "node" or "deno" — YouTube needs a JS runtime for signature solving
     ytdlpJsRuntimes: list('YTDLP_JS_RUNTIMES'),
     ytdlpCookiesFile: process.env.YTDLP_COOKIES_FILE || '',
+    teraboxCookie: normalizeTeraboxCookie(process.env.TERABOX_COOKIE || ''),
     maxConcurrentDownloads: Math.max(1, int('MAX_CONCURRENT_DOWNLOADS', 3)),
     maxQueueLength: Math.max(0, int('MAX_QUEUE_LENGTH', 20)),
     maxFileSize: int('MAX_FILE_SIZE', 2 * 1024 * 1024 * 1024),

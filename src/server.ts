@@ -78,7 +78,7 @@ const ytdlp = new YtDlp({
   cookiesFile: prepareCookies()
 });
 const mediaExtractor = new MediaExtractor(adapterRegistry, ytdlp, config.analyzeTimeoutMs);
-const teraBoxExtractor = new TeraBoxExtractor(ffmpegPath);
+const teraBoxExtractor = new TeraBoxExtractor(ffmpegPath, config.teraboxCookie);
 const progressTracker = new ProgressTracker();
 const downloadManager = new DownloadManager({
   adapterRegistry,
@@ -111,7 +111,8 @@ const app = createApp({
     const { ytdlpVersion, ffmpegVersion } = await toolVersions;
     return {
       ytdlp: ytdlpVersion ? { available: true, version: ytdlpVersion } : { available: false },
-      ffmpeg: ffmpegVersion ? { available: true, version: ffmpegVersion } : { available: false }
+      ffmpeg: ffmpegVersion ? { available: true, version: ffmpegVersion } : { available: false },
+      terabox: { fullDownloads: teraBoxExtractor.hasAccount }
     };
   }
 });

@@ -10,6 +10,8 @@ import { ErrorCode } from '../types';
 export interface TeraBoxFile {
   filename: string;
   size: number;
+  /** Seconds, for videos */
+  duration: number;
   dlink: string;
   thumbnail: string;
 }
@@ -29,6 +31,7 @@ export interface TeraBoxStream {
   referer: string;
   filename: string;
   thumbnail: string;
+  duration: number;
 }
 
 type ProgressFn = (downloaded: number, total: number) => void;
@@ -39,7 +42,15 @@ const MAX_BODY = 10 * 1024 * 1024;
 export class TeraBoxExtractor {
   private readonly UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36';
 
-  constructor(private ffmpegPath = 'ffmpeg') {}
+  /**
+   * @param accountCookie optional logged-in TeraBox cookie (e.g. "ndus=..."):
+   *   without it TeraBox withholds direct links and only streams a preview
+   */
+  constructor(private ffmpegPath = 'ffmpeg', private accountCookie = '') {}
+
+  get hasAccount(): boolean {
+    return !!this.accountCookie;
+  }
 
   /** True only when the URL's hostname is a known TeraBox domain */
   static isTeraBoxUrl(url: string): boolean {
@@ -60,7 +71,7 @@ export class TeraBoxExtractor {
     const fail = (error: string): TeraBoxResult => ({ success: false, title: '', files: [], thumbnail: '', error });
     try {
       const normalizedUrl = this.normalizeUrl(shareUrl);
-      const { body, cookies, finalUrl } = await this.httpGet(normalizedUrl);
+      const { body, cookies, finalUrl } = await this.httpGet(normalizedUrl, {}, 10, this.accountCookie);
       const jsToken = this.extractJsToken(body);
       const { fullSurl, strippedSurl } = this.extractSurl(shareUrl, finalUrl);
       if (!fullSurl && !strippedSurl) return fail('Could not read the share id from this TeraBox URL');
@@ -134,6 +145,7 @@ export class TeraBoxExtractor {
       .map((f: any) => ({
         filename: f.server_filename || f.filename || f.name || 'file',
         size: parseInt(f.size) || 0,
+        duration: Number(f.duration) || 0,
         dlink: String(f.dlink || '').replace(/\\u002F/g, '/').replace(/\\\//g, '/'),
         thumbnail: String(f.thumbs?.url3 || f.thumbs?.url2 || f.thumbs?.url1 || f.thumbnail || '').replace(/\\u002F/g, '/')
       }));
@@ -146,7 +158,7 @@ export class TeraBoxExtractor {
       if (data.errno === 0 && Array.isArray(data.list)) {
         const files = this.mapFiles(data.list);
         if (files.length > 0) {
-          return { success: true, title: data.title || files[0].filename, files, thumbnail: files[0].thumbnail };
+          return { success: true, title: path.posix.basename(data.title || files[0].filename), files, thumbnail: files[0].thumbnail };
         }
       }
       return { success: false, title: '', files: [], thumbnail: '', error: `TeraBox API errno ${data.errno}` };
@@ -251,7 +263,7 @@ export class TeraBoxExtractor {
       const { fullSurl, strippedSurl } = this.extractSurl(shareUrl, this.normalizeUrl(shareUrl));
       if (!strippedSurl || !fullSurl) return null;
 
-      const { body, cookies, finalUrl } = await this.httpGet(`https://www.terabox.com/sharing/link?surl=${strippedSurl}`);
+      const { body, cookies, finalUrl } = await this.httpGet(`https://www.terabox.com/sharing/link?surl=${strippedSurl}`, {}, 10, this.accountCookie);
       const jsToken = this.extractJsToken(body);
       if (!jsToken || !cookies) return null;
 
@@ -279,7 +291,8 @@ export class TeraBoxExtractor {
               cookies,
               referer: finalUrl,
               filename: file.server_filename || 'video.mp4',
-              thumbnail: file.thumbs?.url3 || file.thumbs?.url2 || file.thumbs?.url1 || ''
+              thumbnail: file.thumbs?.url3 || file.thumbs?.url2 || file.thumbs?.url1 || '',
+              duration: Number(file.duration) || 0
             };
           }
         } catch {
@@ -330,7 +343,12 @@ export class TeraBoxExtractor {
             hostname: parsed.hostname,
             path: parsed.pathname + parsed.search,
             method: 'GET',
-            headers: { 'User-Agent': this.UA, Referer: referer, Accept: '*/*' },
+            headers: {
+              'User-Agent': this.UA,
+              Referer: referer,
+              Accept: '*/*',
+              ...(this.accountCookie ? { Cookie: this.accountCookie } : {})
+            },
             signal
           },
           res => {
@@ -387,7 +405,8 @@ export class TeraBoxExtractor {
     destPath: string,
     workDir: string,
     onProgress?: ProgressFn,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    expectedDuration = 0
   ): Promise<void> {
     const stream = await this.getM3U8StreamUrl(shareUrl);
     if (!stream) {
@@ -403,11 +422,46 @@ export class TeraBoxExtractor {
     const duration = Array.from(stream.m3u8Content.matchAll(/#EXTINF:([\d.]+)/g))
       .reduce((sum, m) => sum + parseFloat(m[1]), 0);
 
-    await new Promise<void>((resolve, reject) => {
+    // Anonymous visitors only get a short preview of long videos
+    const fullDuration = Math.max(stream.duration, expectedDuration);
+    if (fullDuration > 0 && duration < fullDuration * 0.9) {
+      fs.rmSync(playlistPath, { force: true });
+      throw new ClassifiedError({
+        code: ErrorCode.ACCESS_DENIED,
+        message: this.accountCookie
+          ? 'TeraBox only returned a preview of this file. The configured TERABOX_COOKIE may have expired.'
+          : 'TeraBox only allows a short preview without login. Set TERABOX_COOKIE on the server to enable full TeraBox downloads.',
+        retryable: false,
+        details: `stream ${Math.round(duration)}s of ${Math.round(fullDuration)}s`
+      });
+    }
+
+    try {
+      // Segment URLs have no file extension; ffmpeg >= 7 rejects those by default
+      await this.remux(playlistPath, destPath, duration, ['-allowed_extensions', 'ALL', '-extension_picky', '0'], onProgress, signal);
+    } catch (e: any) {
+      // Older ffmpeg builds don't know these options (and don't need them)
+      if (!/Option.*not found|Unrecognized option/i.test(e.message)) throw e;
+      await this.remux(playlistPath, destPath, duration, [], onProgress, signal);
+    } finally {
+      fs.rmSync(playlistPath, { force: true });
+    }
+  }
+
+  private remux(
+    playlistPath: string,
+    destPath: string,
+    duration: number,
+    hlsOptions: string[],
+    onProgress?: ProgressFn,
+    signal?: AbortSignal
+  ): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      if (signal?.aborted) return reject(new Error('Download cancelled'));
       const ff = spawn(this.ffmpegPath, [
         '-hide_banner', '-loglevel', 'error', '-nostats',
         '-protocol_whitelist', 'file,http,https,tcp,tls,crypto',
-        '-user_agent', this.UA,
+        ...hlsOptions,
         '-i', playlistPath,
         '-c', 'copy', '-bsf:a', 'aac_adtstoasc',
         '-progress', 'pipe:1', '-y', destPath
@@ -419,7 +473,8 @@ export class TeraBoxExtractor {
         if (settled) return;
         settled = true;
         signal?.removeEventListener('abort', onAbort);
-        fs.rm(playlistPath, { force: true }, () => (err ? reject(err) : resolve()));
+        if (err) reject(err);
+        else resolve();
       };
       const onAbort = () => {
         ff.kill('SIGKILL');
@@ -443,7 +498,7 @@ export class TeraBoxExtractor {
       ff.on('error', err => settle(err));
       ff.on('close', code => {
         if (code === 0) settle();
-        else settle(new Error(`ffmpeg failed to remux TeraBox stream: ${stderr.trim().split('\n').pop() || code}`));
+        else settle(new Error(`ffmpeg failed to remux TeraBox stream: ${stderr.trim().split('\n').slice(-3).join(' ') || code}`));
       });
     });
   }

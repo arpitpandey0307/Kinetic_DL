@@ -501,7 +501,7 @@ export class DownloadManager {
         await tb.downloadFile(file.dlink, outputFilePath, session.url, onProgress, signal, this.maxFileSize);
       } else {
         // No direct link without a logged-in account: remux the HLS stream instead
-        await tb.downloadViaStream(session.url, outputFilePath.replace(/\.[^.]+$/, '') + '.mp4', session.sessionDir, onProgress, signal);
+        await tb.downloadViaStream(session.url, outputFilePath.replace(/\.[^.]+$/, '') + '.mp4', session.sessionDir, onProgress, signal, file.duration);
       }
 
       session.outputFilePath = this.findOutputFile(session.sessionDir) || undefined;
