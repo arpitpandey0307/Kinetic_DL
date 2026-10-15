@@ -4,8 +4,8 @@
 
 ### Multi-Platform Video Downloader & Streamer
 
-![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=node.js&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-22+-339933?style=for-the-badge&logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-4.x-000000?style=for-the-badge&logo=express&logoColor=white)
 ![yt--dlp](https://img.shields.io/badge/yt--dlp-Powered-FF0000?style=for-the-badge)
 
@@ -17,27 +17,16 @@
 
 ## 🎯 Features
 
-- **Universal Platform Support** — Download videos from YouTube, Instagram, TikTok, Twitter/X, Facebook, Reddit, Pinterest, Vimeo, and 1000+ more sites via yt-dlp
-- **In-App Video Player** — Stream and play videos directly in the browser without downloading
-- **Multiple Quality Options** — Choose from all available resolutions (360p to 4K)
-- **Audio-Only Mode** — Extract just the audio track from any video
-- **Hacker-Themed UI** — Cyberpunk design with matrix rain loading animation, terminal logs, and live telemetry
-- **Real-Time Progress** — Server-Sent Events (SSE) for live download progress tracking
-- **Download History** — Persistent history with play, save, and delete functionality
-- **AAC Audio Encoding** — All downloads are merged with AAC audio for universal playback compatibility
-
----
-
-## 🖥️ Screenshots
-
-### Dashboard
-The main dashboard with signal extraction input, quality selection, and live system telemetry.
-
-### Hacker Loading Overlay
-Full-screen "GETTING THE SYSTEM ACCESS" animation with matrix rain, terminal logs, and progress tracking.
-
-### In-App Video Player
-Stream videos directly in the browser with a full-featured HTML5 video player modal.
+- **Universal platform support**: YouTube, Instagram, TikTok, Twitter/X, Facebook, Reddit, Pinterest, Vimeo, TeraBox, and 1000+ more sites via yt-dlp
+- **Quality selection**: one option per resolution (144p to 4K), preferring browser-friendly H.264
+- **Audio-only mode**: MP3 at 320 kbps or lossless FLAC, with embedded title/artist metadata and cover art
+- **Live progress**: progress bar, size, speed and ETA over Server-Sent Events, with automatic polling fallback
+- **Download queue**: concurrent-download limit with a waiting queue, and cancel at any stage
+- **In-app player**: stream the source or play finished downloads with seeking (HTTP Range)
+- **History**: the last transfers stay in the browser, including failed ones with their error; cards show when the server copy has expired
+- **Clear errors**: typed error codes with a RETRY button for transient failures (3 attempts)
+- **Hardened server**: SSRF protection, rate limiting, input validation, CSP and security headers, file size limits, automatic file cleanup
+- **Smooth motion**: eased transitions and entrance animations that respect `prefers-reduced-motion`
 
 ---
 
@@ -45,69 +34,54 @@ Stream videos directly in the browser with a full-featured HTML5 video player mo
 
 | Layer | Technology |
 |-------|-----------|
-| **Backend** | Node.js, Express.js, TypeScript |
-| **Frontend** | HTML5, Vanilla JS, Tailwind CSS |
-| **Video Engine** | yt-dlp, FFmpeg |
-| **Streaming** | Server-Sent Events (SSE), HTTP Range Requests |
-| **Storage** | Local filesystem, localStorage |
+| **Backend** | Node.js 22, Express, TypeScript |
+| **Frontend** | HTML5, vanilla JS, Tailwind CSS (CDN), hls.js |
+| **Video engine** | yt-dlp, FFmpeg |
+| **Streaming** | Server-Sent Events, HTTP Range requests |
+| **Storage** | Temporary files on the server, history in localStorage |
+| **Tests** | Node's built-in test runner (`node:test`) |
 
 ---
 
 ## 📋 Prerequisites
 
-Before running Kinetic_DL, make sure you have the following installed:
-
-1. **Node.js** (v18 or higher)
-   ```
-   node --version
-   ```
-
-2. **yt-dlp** — The core video extraction engine
+1. **Node.js 22+**
+2. **yt-dlp**: the extraction engine ([releases](https://github.com/yt-dlp/yt-dlp/releases))
    ```bash
-   # Windows (via pip)
-   pip install yt-dlp
-
-   # Or download the binary from:
-   # https://github.com/yt-dlp/yt-dlp/releases
+   pip install -U "yt-dlp[default]"   # or download the standalone binary
    ```
-
-3. **FFmpeg** — Required for merging video and audio streams
+3. **FFmpeg**: merges video+audio and converts audio
    ```bash
-   # Windows (via chocolatey)
-   choco install ffmpeg
-
-   # Or download from:
-   # https://ffmpeg.org/download.html
+   winget install Gyan.FFmpeg    # Windows
+   brew install ffmpeg           # macOS
+   sudo apt install ffmpeg       # Debian/Ubuntu
    ```
 
-> **⚠️ Important:** Both `yt-dlp` and `ffmpeg` must be available in your system PATH.
+If they are not on your `PATH`, point `YTDLP_PATH` / `FFMPEG_LOCATION` at them.
+`GET /api/health` shows whether the server can find both.
 
 ---
 
 ## 🚀 Getting Started
 
-### 1. Clone the Repository
 ```bash
 git clone https://github.com/arpitpandey0307/Kinetic_DL.git
 cd Kinetic_DL
-```
-
-### 2. Install Dependencies
-```bash
 npm install
+cp .env.example .env     # optional: adjust settings
+npm run dev              # or: npm run build && npm start
 ```
 
-### 3. Start the Development Server
-```bash
-npm run dev
-```
+Open http://localhost:3000 and click **INITIALIZE DASHBOARD**.
 
-### 4. Open in Browser
-```
-http://localhost:3000
-```
+### Scripts
 
-The landing page will load. Click **"INITIALIZE DASHBOARD"** to access the main downloader interface.
+| Command | What it does |
+|---|---|
+| `npm run dev` | Run the server with ts-node |
+| `npm run build` / `npm start` | Compile to `dist/` and run it |
+| `npm test` | Compile and run the test suite |
+| `npm run typecheck` | Type-check without emitting |
 
 ---
 
@@ -115,35 +89,30 @@ The landing page will load. Click **"INITIALIZE DASHBOARD"** to access the main 
 
 ```
 Kinetic_DL/
-├── public/                     # Frontend static files
+├── public/                     # Frontend (served statically)
 │   ├── index.html              # Landing page
-│   ├── dashboard.html          # Main downloader dashboard
-│   ├── css/
-│   │   └── index.css           # Global styles & design tokens
+│   ├── dashboard.html          # Downloader dashboard
+│   ├── css/motion.css          # Animation layer
 │   └── js/
-│       └── app.js              # Frontend controller (UI logic)
-│
-├── src/                        # Backend TypeScript source
-│   ├── server.ts               # Express server & API routes
-│   ├── types/
-│   │   └── index.ts            # TypeScript type definitions
-│   ├── adapters/               # Platform-specific adapters
-│   │   ├── index.ts            # Adapter registry
-│   │   ├── YouTubeAdapter.ts   # YouTube-specific logic
-│   │   ├── InstagramAdapter.ts # Instagram-specific logic
-│   │   ├── TikTokAdapter.ts    # TikTok-specific logic
-│   │   ├── GenericAdapter.ts   # Fallback for any URL
-│   │   └── OtherAdapters.ts    # Twitter, Facebook, Reddit, etc.
+│       ├── app.js              # UI controller, player, history, toasts
+│       └── motion.js           # Scroll reveals and transition hooks
+├── src/
+│   ├── server.ts               # Bootstrap: wiring, cleanup timers, shutdown
+│   ├── app.ts                  # Express app and all API routes
+│   ├── config.ts               # Environment configuration
+│   ├── adapters/               # Platform recognition + yt-dlp arguments
 │   ├── services/
-│   │   ├── MediaExtractor.ts   # yt-dlp metadata extraction
-│   │   ├── DownloadManager.ts  # Download queue & execution
-│   │   └── ProgressTracker.ts  # Real-time progress via SSE
-│   └── utils/
-│       └── URLParser.ts        # URL validation & platform detection
-│
-├── package.json
-├── tsconfig.json
-└── .gitignore
+│   │   ├── YtDlp.ts            # yt-dlp process wrapper
+│   │   ├── MediaExtractor.ts   # Metadata analysis, quality options, cache
+│   │   ├── DownloadManager.ts  # Queue, execution, cancel, file lifecycle
+│   │   ├── ProgressTracker.ts  # Live progress fan-out (SSE)
+│   │   └── TeraBoxExtractor.ts # TeraBox links, HLS remux
+│   ├── utils/                  # URL parsing, SSRF guard, rate limit, errors
+│   └── types/
+├── test/                       # node:test suites
+├── Dockerfile                  # Production image (Node + ffmpeg + yt-dlp)
+├── render.yaml / railway.toml  # Hosting configs
+└── DEPLOYMENT.md
 ```
 
 ---
@@ -152,60 +121,58 @@ Kinetic_DL/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/analyze` | Extract video metadata from a URL |
-| `POST` | `/api/download` | Start a video download |
-| `GET` | `/api/progress/:sessionId` | SSE stream for download progress |
-| `GET` | `/api/download/:sessionId/file` | Download the completed file |
-| `GET` | `/api/stream?url=` | Get direct stream URL for in-app playback |
-| `GET` | `/api/stream/:sessionId/file` | Stream a downloaded file with seeking support |
-| `POST` | `/api/cancel/:sessionId` | Cancel an active download |
-| `GET` | `/api/history` | Get download history |
+| `GET` | `/api/health` | Status, yt-dlp/ffmpeg availability, queue stats |
+| `POST` | `/api/analyze` | `{ url }` → title, thumbnail, quality options |
+| `POST` | `/api/download` | `{ url, formatId?, audioOnly?, audioFormat? }` → `202 { sessionId }` |
+| `GET` | `/api/progress/:sessionId` | SSE stream of progress, ends with a `complete` event |
+| `GET` | `/api/sessions/:sessionId` | Current session state (polling fallback) |
+| `POST` | `/api/cancel/:sessionId` | Cancel a queued or running download |
+| `GET` | `/api/download/:sessionId/file` | Download the finished file |
+| `GET` | `/api/stream/:sessionId/file` | Play the finished file inline (Range support) |
+| `GET` | `/api/stream?url=` | Direct playable URL for the in-app preview |
+| `GET` | `/api/terabox-stream?url=` | HLS playlist for TeraBox previews |
+| `GET` | `/api/history?ids=a,b` | Which of the given sessions still have files |
 
----
-
-## 🎨 UI Features
-
-### Hacker Loading Overlay
-When extracting video metadata, a full-screen cyberpunk overlay appears with:
-- **Matrix rain** canvas animation
-- **Terminal log stream** with realistic system messages
-- **Progress bar** with percentage tracking
-- **Elapsed timer**
-
-### System Telemetry
-The dashboard footer displays live system metrics:
-- **Vector Map** — Animated orbital rings with randomizing signal power (dBm)
-- **Kernel Log Stream** — Continuously flowing terminal-style log entries
-- **Frequency Scanner** — Animated bar chart
-- **Geo Sync** — Satellite lock visualization
-
-### Video Player Modal
-In-app video playback with:
-- Full-screen modal overlay
-- HTML5 `<video>` element with native controls
-- HTTP Range request support for seeking
-- Loading spinner with stream status
-- Close button and keyboard (Escape) support
+Errors share one shape: `{ success: false, error: { code, message, retryable, details? } }`.
 
 ---
 
 ## ⚙️ Configuration
 
+Every setting is an environment variable. The full list with defaults is in
+[`.env.example`](.env.example). The common ones:
+
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3000` | Server port |
-| `DOWNLOAD_DIR` | `./downloads` | Where downloaded files are stored |
-| `MAX_CONCURRENT` | `3` | Maximum concurrent downloads |
+| `YTDLP_PATH` / `FFMPEG_LOCATION` | from `PATH` | Tool locations |
+| `DOWNLOAD_DIR` | `./downloads` | Temporary file storage |
+| `MAX_CONCURRENT_DOWNLOADS` | `3` | Parallel downloads (the rest queue) |
+| `MAX_FILE_SIZE` | 2 GiB | Larger downloads are refused |
+| `FILE_TTL_MS` | 1 hour | How long finished files are kept |
+| `TERABOX_COOKIE` | empty | Logged-in TeraBox cookie for full TeraBox downloads |
 
 ---
 
 ## 🧪 How It Works
 
-1. **URL Analysis** — User pastes a URL → backend uses yt-dlp to extract metadata (title, thumbnail, available formats)
-2. **Format Selection** — User picks quality/resolution from the extracted formats
-3. **Download** — yt-dlp downloads the video with `bestaudio` merged via FFmpeg into MP4 with AAC audio
-4. **Streaming** — Files can be played in-app via the `/api/stream` endpoints, or downloaded to local disk
-5. **History** — All downloads are saved to localStorage with play/save/delete options
+1. **Analyze**: the URL is validated (syntax, platform, public host), then yt-dlp extracts metadata and formats.
+2. **Select**: the user picks a resolution, or audio-only as MP3/FLAC.
+3. **Download**: the request joins a queue. yt-dlp downloads into a per-session folder, FFmpeg merges to MP4/AAC or converts the audio, and progress streams to the browser.
+4. **Deliver**: the browser saves the file automatically. It can also be played in-app until the server copy expires.
+5. **History**: each transfer is recorded in localStorage with play/save/retry actions.
+
+### Platform notes
+
+- **YouTube** may ask datacenter IPs to "confirm you're not a bot". Provide cookies through `YTDLP_COOKIES` (see [DEPLOYMENT.md](DEPLOYMENT.md)).
+- **TeraBox** only serves short previews to anonymous visitors. Set `TERABOX_COOKIE` for full downloads. Without it the app says so clearly instead of saving a clip.
+
+---
+
+## ☁️ Deployment
+
+Needs a long-running container (Render, Railway, any Docker host). Serverless
+platforms such as Vercel cannot run it. See **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
 ---
 
@@ -213,15 +180,14 @@ In-app video playback with:
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+3. Run `npm test`
+4. Commit your changes and open a Pull Request
 
 ---
 
 ## 📄 License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is open source and available under the MIT License.
 
 ---
 
