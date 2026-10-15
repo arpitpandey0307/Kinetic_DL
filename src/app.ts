@@ -121,7 +121,17 @@ export function createApp(deps: AppDeps) {
 
   app.get('/api/health', asyncHandler(async (_req, res) => {
     const tools = deps.healthCheck ? await deps.healthCheck() : {};
-    res.json({ success: true, status: 'ok', uptime: Math.round(process.uptime()), downloads: downloadManager.getStats(), ...tools });
+    res.json({
+      success: true,
+      status: 'ok',
+      uptime: Math.round(process.uptime()),
+      downloads: downloadManager.getStats(),
+      config: {
+        fileTtlMinutes: Math.round(config.fileTtlMs / 60000),
+        maxFileSizeMb: config.maxFileSize > 0 ? Math.round(config.maxFileSize / 1024 / 1024) : null
+      },
+      ...tools
+    });
   }));
 
   // POST /api/analyze - Analyze URL and return available formats
@@ -321,6 +331,10 @@ export function createApp(deps: AppDeps) {
       res.json({ success: true, streamUrl: urls[0], isHLS: /\.m3u8(\?|$)/.test(urls[0]) });
     } catch (e) {
       const info = classifyError(e);
+      if (info.code === 'FORMAT_UNAVAILABLE') {
+        // The site only offers separate video/audio streams, which a browser can't play together
+        return apiError(res, 404, 'NO_STREAM', 'This video has no single streamable file. Download it, then play it from Recent Transfers.', { retryable: false });
+      }
       res.status(info.code === 'DEPENDENCY_MISSING' ? 503 : 502).json({ success: false, error: info });
     }
   }));

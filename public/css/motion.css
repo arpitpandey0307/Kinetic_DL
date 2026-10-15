@@ -1,0 +1,127 @@
+/*
+ * KINETIC_DL motion layer.
+ * Adds easing and entrance animations on top of the existing design without
+ * changing layout, colours or content. Everything is disabled for users who
+ * prefer reduced motion.
+ */
+:root {
+  --kdl-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --kdl-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Consistent, softer easing for every interactive element */
+button,
+a,
+input,
+.quality-btn,
+.audio-format-btn {
+  transition-timing-function: var(--kdl-ease-out);
+}
+input {
+  transition: border-color 250ms var(--kdl-ease-out), box-shadow 250ms var(--kdl-ease-out);
+}
+input:focus {
+  box-shadow: 0 6px 18px -12px rgba(142, 255, 113, 0.6);
+}
+
+/* Scroll reveal (only when motion.js is running) */
+.kdl-motion .kdl-reveal {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  transition: opacity 700ms var(--kdl-ease-out), transform 700ms var(--kdl-ease-out);
+  transition-delay: var(--kdl-delay, 0ms);
+}
+.kdl-motion .kdl-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Staggered entrances for dynamically inserted items */
+@keyframes kdl-rise {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes kdl-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+#quality-grid > *,
+#history-container > * {
+  animation: kdl-rise 520ms var(--kdl-ease-out) both;
+  animation-delay: var(--kdl-delay, 0ms);
+}
+#progress-panel:not(.hidden),
+#audio-format-group:not(.hidden) {
+  animation: kdl-rise 380ms var(--kdl-ease-out) both;
+}
+
+/* Thumbnail crossfade when a new source is analysed */
+#preview-img.kdl-swap {
+  animation: kdl-fade 650ms var(--kdl-ease-out) both;
+}
+#preview-title {
+  transition: opacity 400ms var(--kdl-ease-out);
+}
+
+/* Progress bar: smooth width plus a subtle sweep while active */
+#progress-bar {
+  position: relative;
+  transition: width 450ms var(--kdl-ease-out), background-color 300ms ease;
+}
+#progress-panel[data-active='true'] #progress-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: translateX(-100%);
+  animation: kdl-sweep 1.6s var(--kdl-ease-in-out) infinite;
+}
+@keyframes kdl-sweep {
+  to { transform: translateX(100%); }
+}
+
+/* Video modal: gentle zoom-in */
+#video-player-modal > .relative.z-10 {
+  transform: scale(0.96) translate3d(0, 8px, 0);
+  transition: transform 420ms var(--kdl-ease-out);
+}
+#video-player-modal.is-open > .relative.z-10 {
+  transform: none;
+}
+
+/* Toasts */
+#toast-container > div {
+  transition-timing-function: var(--kdl-ease-out);
+}
+
+/* Status readouts fade when their text changes */
+.kdl-tick {
+  animation: kdl-fade 300ms var(--kdl-ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+  .kdl-motion .kdl-reveal {
+    opacity: 1;
+    transform: none;
+  }
+}

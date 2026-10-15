@@ -40,6 +40,15 @@ export function classifyError(error: unknown, stderr = ''): ExtractorError {
     return { code: ErrorCode.FILE_TOO_LARGE, message: 'File exceeds the server size limit', retryable: false, details };
   }
 
+  if (/requested format is not available|format is not available/.test(message)) {
+    return {
+      code: ErrorCode.FORMAT_UNAVAILABLE,
+      message: 'That format is not available for this video. Extract again and pick another quality.',
+      retryable: false,
+      details
+    };
+  }
+
   if (/unsupported url|is not a valid url|no video formats found|no video could be found/.test(message)) {
     return { code: ErrorCode.INVALID_URL, message: 'No downloadable video found at this URL', retryable: false, details };
   }

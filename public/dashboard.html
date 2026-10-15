@@ -7,6 +7,8 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/css/motion.css"/>
+<script src="/js/motion.js" defer></script>
 <script id="tailwind-config">
       tailwind.config = {
         darkMode: "class",
@@ -232,23 +234,24 @@
 </div>
 </div>
 <div class="pt-6 border-t border-outline-variant/10">
-<button class="w-full border border-outline-variant/30 py-3 text-[10px] font-label tracking-[0.2em] uppercase text-on-surface-variant hover:text-primary hover:border-primary transition-all">
-                        CLEAR_CACHE_PURGE
+<button id="clear-history-btn" class="w-full border border-outline-variant/30 py-3 text-[10px] font-label tracking-[0.2em] uppercase text-on-surface-variant hover:text-primary hover:border-primary transition-all">
+                        CLEAR_HISTORY_PURGE
                     </button>
 </div>
 </aside>
 <!-- Video Player Area -->
-<section class="col-span-12 lg:col-span-7 aspect-video bg-surface-container-highest relative overflow-hidden group">
-<img alt="Preview Frame" class="w-full h-full object-cover opacity-50 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJb-gyuHDaCNP8hrplte8zjbQTCGyJ3jxPkP9qg45xSxn-1AOFLNxI1HX4kbniUp3ft-FKRP9fIJgMSjWq3OTAvMZV6Zr1mKXV8wFqUqWYTVzv_Ran25BmNzrXMS5jtXo6a4C5cn4zG3b3dyWNFxAuKHKXJY33vQiWWlY75tozrdOlFs6bdkzC1JGnUV6Bdn4L6KRHC6dev2NKko3DttFIF0m3WftyForYZyHg5UZTrzSV1g-1HSdhTnFQjPhfUz4B5UDZX6DDcw"/>
+<section id="preview-section" class="col-span-12 lg:col-span-7 aspect-video bg-surface-container-highest relative overflow-hidden group">
+<img id="preview-img" alt="Preview Frame" class="w-full h-full object-cover opacity-50 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJb-gyuHDaCNP8hrplte8zjbQTCGyJ3jxPkP9qg45xSxn-1AOFLNxI1HX4kbniUp3ft-FKRP9fIJgMSjWq3OTAvMZV6Zr1mKXV8wFqUqWYTVzv_Ran25BmNzrXMS5jtXo6a4C5cn4zG3b3dyWNFxAuKHKXJY33vQiWWlY75tozrdOlFs6bdkzC1JGnUV6Bdn4L6KRHC6dev2NKko3DttFIF0m3WftyForYZyHg5UZTrzSV1g-1HSdhTnFQjPhfUz4B5UDZX6DDcw"/>
 <div class="absolute inset-0 flex items-center justify-center">
-<button class="w-20 h-20 bg-primary/10 backdrop-blur-md border border-primary/40 flex items-center justify-center hover:scale-110 transition-transform active:scale-95 shadow-[0_0_30px_rgba(142,255,113,0.2)]">
+<button id="preview-play" title="Play preview" class="w-20 h-20 bg-primary/10 backdrop-blur-md border border-primary/40 flex items-center justify-center hover:scale-110 transition-transform active:scale-95 shadow-[0_0_30px_rgba(142,255,113,0.2)]">
 <span class="material-symbols-outlined text-primary text-4xl" data-weight="fill">play_arrow</span>
 </button>
 </div>
 <!-- HUD Overlays -->
-<div class="absolute top-4 left-4 p-2 bg-black/60 backdrop-blur-sm border-l border-primary">
-<span class="text-[10px] font-label text-primary">PREVIEW_MODE // 1080P_RELAY</span>
+<div id="preview-hud" class="absolute top-4 left-4 p-2 bg-black/60 backdrop-blur-sm border-l border-primary max-w-[80%]">
+<span class="text-[10px] font-label text-primary">PREVIEW_MODE // AWAITING_SIGNAL</span>
 </div>
+<div id="preview-title" class="absolute bottom-4 left-4 right-24 text-xs font-headline font-bold text-on-surface truncate"></div>
 <div class="absolute bottom-4 right-4 text-[10px] font-label text-primary/40 text-right">
                     LATENCY: 14MS<br/>FPS: 60.0
                 </div>
@@ -263,33 +266,22 @@
 <div>
 <span class="text-[9px] font-label text-neutral-500 uppercase block mb-3">Resolution Tier</span>
 <div id="quality-grid" class="grid grid-cols-2 gap-2">
-<button class="quality-btn bg-surface-container-highest border border-outline-variant/20 p-3 text-left hover:border-primary transition-all" data-format-id="" data-resolution="2160p">
-<div class="text-xs font-bold text-on-surface">4K_ULTRA</div>
-<div class="text-[8px] text-neutral-600">3840 x 2160 // HEVC</div>
-</button>
-<button class="quality-btn bg-surface-container-highest border border-primary p-3 text-left" data-format-id="" data-resolution="1440p">
-<div class="text-xs font-bold text-primary">2K_QHD</div>
-<div class="text-[8px] text-primary/60">2560 x 1440 // MP4</div>
-</button>
-<button class="quality-btn bg-surface-container-highest border border-outline-variant/20 p-3 text-left hover:border-primary transition-all" data-format-id="" data-resolution="1080p">
-<div class="text-xs font-bold text-on-surface">1080P_HD</div>
-<div class="text-[8px] text-neutral-600">1920 x 1080 // MP4</div>
-</button>
-<button class="quality-btn bg-surface-container-highest border border-outline-variant/20 p-3 text-left hover:border-primary transition-all" data-format-id="" data-resolution="720p">
-<div class="text-xs font-bold text-on-surface">720P_STD</div>
-<div class="text-[8px] text-neutral-600">1280 x 720 // WEBM</div>
-</button>
+<div class="col-span-2 text-center text-neutral-600 text-[10px] font-label tracking-widest uppercase py-6 border border-dashed border-outline-variant/20">AWAITING_SIGNAL // EXTRACT A URL</div>
 </div>
 </div>
 <!-- Audio Toggle -->
 <div class="flex items-center justify-between bg-surface-container-highest p-4 border-l border-secondary">
 <div>
 <div class="text-xs font-bold text-on-surface">EXTRACT_AUDIO_ONLY</div>
-<div class="text-[8px] text-neutral-600 uppercase">320kbps Lossless FLAC/MP3</div>
+<div class="text-[8px] text-neutral-600 uppercase">MP3 320kbps // FLAC lossless</div>
 </div>
-<button id="audio-toggle" class="w-12 h-6 bg-neutral-800 rounded-full relative flex items-center px-1 transition-colors hover:bg-secondary/20">
+<button id="audio-toggle" role="switch" aria-checked="false" aria-label="Extract audio only" class="w-12 h-6 bg-neutral-800 rounded-full relative flex items-center px-1 transition-colors hover:bg-secondary/20">
 <div id="audio-toggle-knob" class="w-4 h-4 bg-neutral-600 rounded-full transition-transform"></div>
 </button>
+</div>
+<div id="audio-format-group" class="hidden grid-cols-2 gap-2 -mt-4">
+<button data-audio-format="mp3" class="audio-format-btn border border-secondary bg-secondary/10 py-2 text-[10px] font-label font-bold tracking-widest text-secondary">MP3 // 320K</button>
+<button data-audio-format="flac" class="audio-format-btn border border-outline-variant/20 py-2 text-[10px] font-label font-bold tracking-widest text-neutral-500 hover:border-secondary">FLAC // LOSSLESS</button>
 </div>
 <!-- CTA -->
 <button id="download-btn" class="w-full py-5 bg-primary group relative overflow-hidden flex items-center justify-center gap-3 active:scale-[0.98] transition-transform">
@@ -297,12 +289,28 @@
 <span class="material-symbols-outlined text-on-primary relative z-10" data-weight="fill">download</span>
 <div class="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500"></div>
 </button>
+<!-- Live transfer progress -->
+<div id="progress-panel" class="hidden bg-surface-container-highest p-4 border-l border-primary space-y-3">
+<div class="flex justify-between items-center gap-3">
+<span id="progress-status" class="text-[10px] font-label font-bold tracking-widest text-primary uppercase truncate">QUEUED</span>
+<span id="progress-percent" class="text-xs font-headline font-bold text-primary">0%</span>
+</div>
+<div class="h-1.5 w-full bg-black overflow-hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-track">
+<div id="progress-bar" class="h-full bg-primary transition-[width] duration-300 ease-out" style="width:0%; box-shadow: 0 0 10px #8eff71;"></div>
+</div>
+<div class="grid grid-cols-3 gap-2 text-[9px] font-mono text-neutral-500 uppercase">
+<div>SIZE<br/><span id="progress-size" class="text-on-surface">--</span></div>
+<div>SPEED<br/><span id="progress-speed" class="text-on-surface">--</span></div>
+<div>ETA<br/><span id="progress-eta" class="text-on-surface">--</span></div>
+</div>
+<button id="cancel-btn" class="w-full border border-secondary/40 py-2 text-[10px] font-label font-bold tracking-widest uppercase text-secondary hover:bg-secondary/10 transition-all">ABORT_TRANSFER</button>
+</div>
 </div>
 </div>
 <!-- Secondary Control -->
 <div class="bg-surface-container-low p-4 flex justify-between items-center">
-<span class="text-[10px] font-label text-neutral-600 uppercase">Dest: /Home/KINETIC/DL/</span>
-<button class="text-primary text-[10px] font-label hover:underline">CHANGE_PATH</button>
+<span class="text-[10px] font-label text-neutral-600 uppercase">Dest: BROWSER_DOWNLOADS</span>
+<span id="ttl-display" class="text-primary/60 text-[10px] font-label uppercase">SERVER_COPY: TEMPORARY</span>
 </div>
 </section>
 </div>
@@ -310,7 +318,7 @@
 <section class="mt-24">
 <div class="flex justify-between items-end mb-8">
 <h2 class="text-3xl font-black font-headline tracking-tighter uppercase">Recent <span class="text-primary">Transfers</span></h2>
-<div class="text-[10px] font-label text-neutral-600">SHOWING 3 OF 1,024 SESSIONS</div>
+<div id="history-count" class="text-[10px] font-label text-neutral-600">SHOWING 0 OF 0 SESSIONS</div>
 </div>
 <div id="history-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
 <!-- History cards will be dynamically inserted here -->
@@ -426,7 +434,7 @@
 <footer class="mt-20 w-full border-t border-lime-400/10 py-8 bg-black">
 <div class="flex flex-col md:flex-row justify-between items-center px-8 w-full max-w-7xl mx-auto gap-6">
 <div class="text-neutral-600 font-label text-[10px] tracking-[0.2em] uppercase">
-                © 2024 KINETIC_SYS_OPERATIONS // ALL_RIGHTS_ENCRYPTED
+                © 2026 KINETIC_SYS_OPERATIONS // ALL_RIGHTS_ENCRYPTED
             </div>
 <div class="flex gap-8 font-label text-[10px] tracking-[0.2em] uppercase">
 <a class="text-neutral-600 hover:text-lime-400 transition-opacity" href="#">ENCRYPTION_DOCS</a>
@@ -500,6 +508,8 @@
     </div>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<!-- Notifications -->
+<div id="toast-container" class="fixed bottom-6 right-6 z-[10000] flex flex-col gap-3 w-[min(92vw,380px)]" aria-live="polite"></div>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script src="/js/app.js"></script>
 </body></html>
